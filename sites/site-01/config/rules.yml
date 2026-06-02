@@ -15,6 +15,14 @@ red_flag_rules:
     destination: ""
     note: "Provider URL needs review. No confirmed 1:1 destination found."
 
+  - id: location_without_confirmed_mapping
+    description: "Location URL without confirmed 1:1 destination."
+    match_contains:
+      - "/locations/"
+      - "/location/"
+    destination: ""
+    note: "Location URL needs review. No confirmed 1:1 destination found."
+
   - id: press_or_news_without_ia_destination
     description: "Press, news, article, blog, or date-footprint URL without confirmed IA destination."
     match_contains:
@@ -24,6 +32,8 @@ red_flag_rules:
       - "/blog/"
       - "/article/"
       - "/articles/"
+      - "/mvh-news"
+      - "/mvh-news-events"
     match_regex:
       - "/(19|20)[0-9]{2}/"
     destination: ""
@@ -52,11 +62,11 @@ red_flag_rules:
     note: "Asset/file URL needs review. No approved asset routing destination found."
 
 redirect_rules:
-  - id: four_xx_catch_all
-    description: "Fallback for crawled 4xx URLs. Review before final deployment."
-    status_code_starts_with: "4"
+  - id: non_200_non_3xx_catch_all
+    description: "Fallback for crawled non-200 URLs, excluding existing 3xx redirects."
+    status_code_non_200_non_3xx: true
     destination: "https://www.massgeneralbrigham.org"
-    note: "4xx catch-all to homepage. Review before final deployment."
+    note: "Non-200/non-3xx catch-all to homepage. Review before final deployment."
 
   - id: ia_exact_match
     description: "Use an exact IA destination when the source URL appears in the IA map."
@@ -64,10 +74,14 @@ redirect_rules:
     source_column_candidates:
       - "Existing URL"
       - "Source URL"
+      - "source URL"
+      - "source URL 2"
+      - "source URL 3"
       - "Old URL"
       - "Address"
       - "URL"
     destination_column_candidates:
+      - "Full URL"
       - "Destination URL"
       - "New URL"
       - "MGB URL"
