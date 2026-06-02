@@ -3,8 +3,9 @@
 This is the CLI version of the intake app flow:
 1. Copy crawl + IA files into a temporary site folder.
 2. Optionally convert a Manual Mapping Key into manual-exclude.csv.
-3. Run redirect generation.
-4. Build a reference-style workbook.
+3. Run base redirect generation.
+4. Apply IA-derived pattern mappings to blank destinations.
+5. Build a reference-style workbook.
 
 Example:
     python scripts/run_intake_pipeline.py \
@@ -25,6 +26,7 @@ from pathlib import Path
 
 import yaml
 
+from apply_ia_pattern_mappings import apply_pattern_mappings
 from build_manual_exclude_from_key import build_manual_exclude
 from build_output_workbook import build_workbook
 from generate_redirects import process_site
@@ -137,14 +139,19 @@ def run_pipeline(args: argparse.Namespace) -> Path:
     (config_dir / "site.yml").write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     (config_dir / "rules.yml").write_text(yaml.safe_dump(default_rules(), sort_keys=False), encoding="utf-8")
 
-    # process_site writes to the configured site output folder, so temporarily point output config to requested output dir by copying after run.
     process_site(site_id)
     generated_output = site_root / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
     for csv_file in generated_output.glob("*.csv"):
         shutil.copy2(csv_file, output_dir / csv_file.name)
-    if (site_root / "output" / "manually-mapped-urls-exclude.csv").exists():
-        shutil.copy2(site_root / "output" / "manually-mapped-urls-exclude.csv", output_dir / "manually-mapped-urls-exclude.csv")
+
+    if not args.skip_ia_patterns:
+        apply_pattern_mappings(
+            redirect_list_path=output_dir / "redirect-list.csv",
+            ia_path=input_dir / ia_name,
+            output_dir=output_dir,
+            manual_exclude_path=manual_exclude_path if manual_enabled else None,
+        )
 
     workbook_path = output_dir / "redirect-workbook.xlsx"
     build_workbook(
@@ -167,6 +174,7 @@ def main() -> None:
     parser.add_argument("--site-label", default="Site")
     parser.add_argument("--source-domain", action="append", default=[])
     parser.add_argument("--destination-domain", default="https://www.massgeneralbrigham.org")
+    parser.add_argument("--skip-ia-patterns", action="store_true", help="Skip IA-derived pattern mapping layer.")
     parser.add_argument("--clean", action="store_true")
     args = parser.parse_args()
 
