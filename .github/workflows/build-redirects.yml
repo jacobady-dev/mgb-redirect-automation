@@ -1,0 +1,45 @@
+name: Build redirect outputs
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Site folder to process, such as site-01"
+        required: true
+        default: "site-01"
+  push:
+    branches:
+      - main
+    paths:
+      - "sites/**"
+      - "scripts/**"
+      - "requirements.txt"
+      - ".github/workflows/build-redirects.yml"
+
+jobs:
+  build-redirects:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate redirect outputs
+        run: |
+          SITE="${{ github.event.inputs.site || 'site-01' }}"
+          python scripts/generate_redirects.py --site "$SITE"
+
+      - name: Upload generated CSVs
+        uses: actions/upload-artifact@v4
+        with:
+          name: redirect-outputs-${{ github.event.inputs.site || 'site-01' }}
+          path: sites/${{ github.event.inputs.site || 'site-01' }}/output/*.csv
+          if-no-files-found: error
