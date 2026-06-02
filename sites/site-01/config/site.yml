@@ -9,7 +9,7 @@ destination_domain: "https://www.massgeneralbrigham.org"
 
 input_files:
   crawl: "input/crawl.csv"
-  ia_map: "input/ia-map.csv"
+  ia_map: "input/ia-map.xlsx"
 
 manual_exclude:
   enabled: false
@@ -20,3 +20,4 @@ outputs:
   red_flags: "output/red-flags.csv"
   ignored_search_agency: "output/ignored-search-agency.csv"
   qa_summary: "output/qa-summary.csv"
+  internal_rule_matches: "output/internal-rule-matches.csv"
