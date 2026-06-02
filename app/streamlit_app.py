@@ -25,6 +25,7 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+from build_manual_exclude_from_key import build_manual_exclude  # noqa: E402
 from generate_redirects import process_site  # noqa: E402
 
 
@@ -42,6 +43,7 @@ OUTPUT_FILES = {
     "ignored-search-agency.csv": "Ignored / Excluded",
     "qa-summary.csv": "QA Summary",
     "internal-rule-matches.csv": "Internal Rule Matches",
+    "manually-mapped-urls-exclude.csv": "Manually Mapped URLs (exclude)",
 }
 
 
@@ -78,7 +80,6 @@ def build_site_config(
     manual_exclude_enabled: bool,
     crawl_ext: str,
     ia_ext: str,
-    exclude_ext: str,
 ) -> Dict:
     return {
         "site_id": site_id,
@@ -91,7 +92,7 @@ def build_site_config(
         },
         "manual_exclude": {
             "enabled": manual_exclude_enabled,
-            "file": f"manual-exclude{exclude_ext}" if manual_exclude_enabled else None,
+            "file": "manual-exclude.csv" if manual_exclude_enabled else None,
         },
         "outputs": {
             "redirect_list": "output/redirect-list.csv",
@@ -99,6 +100,8 @@ def build_site_config(
             "ignored_search_agency": "output/ignored-search-agency.csv",
             "qa_summary": "output/qa-summary.csv",
             "internal_rule_matches": "output/internal-rule-matches.csv",
+            "internal_ia_map_detected": "output/ia-map-detected.csv",
+            "internal_red_flags": "output/internal-red-flags.csv",
         },
     }
 
@@ -165,8 +168,8 @@ def preview_csv(path: Path, label: str) -> None:
 
 st.title("Redirect Mapping Intake")
 st.write(
-    "Upload a Screaming Frog crawl, IA workbook/map, and optional manual exclude file. "
-    "The app generates Google Sheets-ready redirect outputs and sends concerned URLs to Red Flags."
+    "Upload a Screaming Frog crawl, IA workbook/map, and optional manual mapping layer. "
+    "The app generates Google Sheets-ready redirect outputs."
 )
 
 with st.sidebar:
@@ -181,27 +184,30 @@ with st.sidebar:
         "Destination domain",
         value="https://www.massgeneralbrigham.org",
     )
-    manual_exclude_enabled = st.radio(
-        "Is there a manual exclude file?",
-        options=["No", "Yes"],
+    manual_input_mode = st.radio(
+        "Manual mapping / exclude layer",
+        options=[
+            "None",
+            "Upload Manually Mapped URLs (exclude)",
+            "Upload Manual Mapping Key",
+        ],
         index=0,
-        help="If yes, matching URLs are ignored completely because another team owns them.",
-    ) == "Yes"
+        help="Manual mapping rows are removed from automated redirect generation and output separately.",
+    )
 
     st.divider()
     st.caption("Default handling")
-    st.checkbox("Send uncertain mappings to Red Flags", value=True, disabled=True)
-    st.checkbox("Send provider uncertainty to Red Flags", value=True, disabled=True)
-    st.checkbox("Send location uncertainty to Red Flags", value=True, disabled=True)
-    st.checkbox("Send press/news uncertainty to Red Flags", value=True, disabled=True)
-    st.checkbox("Exclude blocked/noindex/canonicalized URLs", value=True, disabled=True)
-    st.checkbox("Exclude existing 3xx redirect rows", value=True, disabled=True)
+    st.checkbox("Manual mapping/exclude rows are removed from automation", value=True, disabled=True)
+    st.checkbox("Blocked/noindex rows are excluded from CSV", value=True, disabled=True)
+    st.checkbox("Most unresolved rows remain in Redirect List with blank destinations", value=True, disabled=True)
 
 crawl_file = st.file_uploader("Upload Screaming Frog crawl", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
 ia_file = st.file_uploader("Upload IA workbook or IA map", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
-exclude_file = None
-if manual_exclude_enabled:
-    exclude_file = st.file_uploader("Upload manual exclude file", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
+manual_file = None
+if manual_input_mode == "Upload Manually Mapped URLs (exclude)":
+    manual_file = st.file_uploader("Upload Manually Mapped URLs (exclude)", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
+elif manual_input_mode == "Upload Manual Mapping Key":
+    manual_file = st.file_uploader("Upload Manual Mapping Key", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
 
 with st.expander("Advanced: edit rules.yml for this run"):
     rules_text = st.text_area(
@@ -211,14 +217,16 @@ with st.expander("Advanced: edit rules.yml for this run"):
         help="These rules control which URLs become redirects and which URLs become red flags.",
     )
 
-can_generate = crawl_file is not None and ia_file is not None and (not manual_exclude_enabled or exclude_file is not None)
+manual_required = manual_input_mode != "None"
+can_generate = crawl_file is not None and ia_file is not None and (not manual_required or manual_file is not None)
 
 if st.button("Generate redirect outputs", type="primary", disabled=not can_generate):
     run_id = f"intake-{uuid.uuid4().hex[:8]}"
     source_domains = [line.strip() for line in source_domains_raw.splitlines() if line.strip()]
     crawl_ext = normalized_input_extension(crawl_file)
     ia_ext = normalized_input_extension(ia_file, fallback=".xlsx")
-    exclude_ext = normalized_input_extension(exclude_file) if manual_exclude_enabled else ".csv"
+    manual_ext = normalized_input_extension(manual_file) if manual_required else ".csv"
+    manual_exclude_enabled = manual_required
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_root = Path(tmp)
@@ -235,8 +243,16 @@ if st.button("Generate redirect outputs", type="primary", disabled=not can_gener
 
         save_uploaded_table(crawl_file, input_dir / f"crawl{crawl_ext}")
         save_uploaded_table(ia_file, input_dir / f"ia-map{ia_ext}")
-        if manual_exclude_enabled and exclude_file is not None:
-            save_uploaded_table(exclude_file, input_dir / f"manual-exclude{exclude_ext}")
+
+        if manual_required and manual_file is not None:
+            if manual_input_mode == "Upload Manual Mapping Key":
+                manual_key_path = input_dir / f"manual-mapping-key{manual_ext}"
+                save_uploaded_table(manual_file, manual_key_path)
+                manual_exclude_df = build_manual_exclude(manual_key_path, input_dir / "manual-exclude.csv")
+            else:
+                save_uploaded_table(manual_file, input_dir / "manual-exclude.csv")
+                manual_exclude_df = pd.read_csv(input_dir / "manual-exclude.csv")
+            manual_exclude_df.to_csv(output_dir / "manually-mapped-urls-exclude.csv", index=False)
 
         site_config = build_site_config(
             site_id=run_id,
@@ -246,7 +262,6 @@ if st.button("Generate redirect outputs", type="primary", disabled=not can_gener
             manual_exclude_enabled=manual_exclude_enabled,
             crawl_ext=crawl_ext,
             ia_ext=ia_ext,
-            exclude_ext=exclude_ext,
         )
         (config_dir / "site.yml").write_text(yaml.safe_dump(site_config, sort_keys=False), encoding="utf-8")
         (config_dir / "rules.yml").write_text(rules_text, encoding="utf-8")
