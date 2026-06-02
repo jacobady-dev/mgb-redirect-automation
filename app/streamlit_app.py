@@ -35,10 +35,11 @@ st.set_page_config(page_title="Redirect Mapping Intake", layout="wide")
 
 
 OUTPUT_FILES = {
-    "redirect-list.csv": "Redirect List",
+    "redirect-list.csv": "Redirect List for CSV",
     "red-flags.csv": "Red Flags",
-    "ignored-search-agency.csv": "Ignored / Search Agency",
+    "ignored-search-agency.csv": "Ignored / Excluded",
     "qa-summary.csv": "QA Summary",
+    "internal-rule-matches.csv": "Internal Rule Matches",
 }
 
 
@@ -48,12 +49,22 @@ def read_default_rules() -> str:
     return "defaults:\n  status_code: 301\n"
 
 
+def uploaded_extension(uploaded_file, fallback: str = ".csv") -> str:
+    if uploaded_file is None:
+        return fallback
+    suffix = Path(uploaded_file.name).suffix.lower()
+    return suffix or fallback
+
+
 def build_site_config(
     site_id: str,
     site_label: str,
     source_domains: list[str],
     destination_domain: str,
     manual_exclude_enabled: bool,
+    crawl_ext: str,
+    ia_ext: str,
+    exclude_ext: str,
 ) -> Dict:
     return {
         "site_id": site_id,
@@ -61,18 +72,19 @@ def build_site_config(
         "source_domains": source_domains,
         "destination_domain": destination_domain,
         "input_files": {
-            "crawl": "input/crawl.csv",
-            "ia_map": "input/ia-map.csv",
+            "crawl": f"input/crawl{crawl_ext}",
+            "ia_map": f"input/ia-map{ia_ext}",
         },
         "manual_exclude": {
             "enabled": manual_exclude_enabled,
-            "file": "manual-exclude.csv" if manual_exclude_enabled else None,
+            "file": f"manual-exclude{exclude_ext}" if manual_exclude_enabled else None,
         },
         "outputs": {
             "redirect_list": "output/redirect-list.csv",
             "red_flags": "output/red-flags.csv",
             "ignored_search_agency": "output/ignored-search-agency.csv",
             "qa_summary": "output/qa-summary.csv",
+            "internal_rule_matches": "output/internal-rule-matches.csv",
         },
     }
 
@@ -113,7 +125,7 @@ def preview_csv(path: Path, label: str) -> None:
 
 st.title("Redirect Mapping Intake")
 st.write(
-    "Upload a Screaming Frog crawl, IA map, and optional manual exclude file. "
+    "Upload a Screaming Frog crawl, IA workbook/map, and optional manual exclude file. "
     "The app generates Google Sheets-ready redirect outputs and sends concerned URLs to Red Flags."
 )
 
@@ -140,14 +152,16 @@ with st.sidebar:
     st.caption("Default handling")
     st.checkbox("Send uncertain mappings to Red Flags", value=True, disabled=True)
     st.checkbox("Send provider uncertainty to Red Flags", value=True, disabled=True)
+    st.checkbox("Send location uncertainty to Red Flags", value=True, disabled=True)
     st.checkbox("Send press/news uncertainty to Red Flags", value=True, disabled=True)
-    st.checkbox("Send unclear assets to Red Flags", value=True, disabled=True)
+    st.checkbox("Exclude blocked/noindex/canonicalized URLs", value=True, disabled=True)
+    st.checkbox("Exclude existing 3xx redirect rows", value=True, disabled=True)
 
-crawl_file = st.file_uploader("Upload Screaming Frog crawl CSV", type=["csv"])
-ia_file = st.file_uploader("Upload IA map CSV", type=["csv"])
+crawl_file = st.file_uploader("Upload Screaming Frog crawl", type=["csv", "xlsx", "xlsm", "xls"])
+ia_file = st.file_uploader("Upload IA workbook or IA map", type=["csv", "xlsx", "xlsm", "xls"])
 exclude_file = None
 if manual_exclude_enabled:
-    exclude_file = st.file_uploader("Upload manual exclude CSV", type=["csv"])
+    exclude_file = st.file_uploader("Upload manual exclude file", type=["csv", "xlsx", "xlsm", "xls"])
 
 with st.expander("Advanced: edit rules.yml for this run"):
     rules_text = st.text_area(
@@ -162,6 +176,9 @@ can_generate = crawl_file is not None and ia_file is not None and (not manual_ex
 if st.button("Generate redirect outputs", type="primary", disabled=not can_generate):
     run_id = f"intake-{uuid.uuid4().hex[:8]}"
     source_domains = [line.strip() for line in source_domains_raw.splitlines() if line.strip()]
+    crawl_ext = uploaded_extension(crawl_file)
+    ia_ext = uploaded_extension(ia_file, fallback=".xlsx")
+    exclude_ext = uploaded_extension(exclude_file) if manual_exclude_enabled else ".csv"
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_root = Path(tmp)
@@ -176,10 +193,10 @@ if st.button("Generate redirect outputs", type="primary", disabled=not can_gener
         config_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        save_uploaded_file(crawl_file, input_dir / "crawl.csv")
-        save_uploaded_file(ia_file, input_dir / "ia-map.csv")
+        save_uploaded_file(crawl_file, input_dir / f"crawl{crawl_ext}")
+        save_uploaded_file(ia_file, input_dir / f"ia-map{ia_ext}")
         if manual_exclude_enabled and exclude_file is not None:
-            save_uploaded_file(exclude_file, input_dir / "manual-exclude.csv")
+            save_uploaded_file(exclude_file, input_dir / f"manual-exclude{exclude_ext}")
 
         site_config = build_site_config(
             site_id=run_id,
@@ -187,18 +204,22 @@ if st.button("Generate redirect outputs", type="primary", disabled=not can_gener
             source_domains=source_domains,
             destination_domain=destination_domain,
             manual_exclude_enabled=manual_exclude_enabled,
+            crawl_ext=crawl_ext,
+            ia_ext=ia_ext,
+            exclude_ext=exclude_ext,
         )
         (config_dir / "site.yml").write_text(yaml.safe_dump(site_config, sort_keys=False), encoding="utf-8")
         (config_dir / "rules.yml").write_text(rules_text, encoding="utf-8")
 
         original_cwd = Path.cwd()
+        run_failed = False
         try:
-            # process_site expects the current directory to be the repository root.
             import os
 
             os.chdir(working_repo)
             process_site(run_id)
         except Exception as exc:  # noqa: BLE001
+            run_failed = True
             st.error("The run failed. Check that the uploaded files have recognizable URL columns.")
             st.exception(exc)
         finally:
@@ -206,21 +227,22 @@ if st.button("Generate redirect outputs", type="primary", disabled=not can_gener
 
             os.chdir(original_cwd)
 
-        st.success("Redirect outputs generated.")
-        zip_bytes = zip_outputs(output_dir)
-        st.download_button(
-            label="Download all outputs as ZIP",
-            data=zip_bytes,
-            file_name=f"{run_id}-redirect-outputs.zip",
-            mime="application/zip",
-            key="download-zip",
-        )
+        if not run_failed:
+            st.success("Redirect outputs generated.")
+            zip_bytes = zip_outputs(output_dir)
+            st.download_button(
+                label="Download all outputs as ZIP",
+                data=zip_bytes,
+                file_name=f"{run_id}-redirect-outputs.zip",
+                mime="application/zip",
+                key="download-zip",
+            )
 
-        for filename, label in OUTPUT_FILES.items():
-            preview_csv(output_dir / filename, label)
+            for filename, label in OUTPUT_FILES.items():
+                preview_csv(output_dir / filename, label)
 
 elif not can_generate:
-    st.info("Upload the required CSV files to generate outputs.")
+    st.info("Upload the required files to generate outputs.")
 
 st.divider()
 st.caption(
