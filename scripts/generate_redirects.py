@@ -1,6 +1,6 @@
-"""Backward-compatible wrapper for the workbook-aligned redirect engine."""
+"""Backward-compatible wrapper for the robust workbook-aligned redirect engine."""
 
-from generate_redirects_core import main, process_site
+from generate_redirects_workbook import main, process_site
 
 
 if __name__ == "__main__":
