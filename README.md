@@ -18,6 +18,38 @@ Confident, IA-backed mapping goes to the redirect list.
 
 Concerned, uncertain, unsupported, or risky mappings go to red flags.
 
+## User-friendly intake app
+
+The easiest workflow is the guided Streamlit intake app.
+
+It lets a user:
+
+1. Enter a site label.
+2. Enter source domain(s).
+3. Confirm the destination domain.
+4. Upload the Screaming Frog crawl CSV.
+5. Upload the IA map CSV.
+6. Choose whether there is a manual exclude file.
+7. Upload the manual exclude CSV if needed.
+8. Generate outputs.
+9. Download the output CSVs individually or as a ZIP.
+
+Run it locally:
+
+```bash
+pip install -r requirements.txt
+streamlit run app/streamlit_app.py
+```
+
+Generated outputs:
+
+```text
+redirect-list.csv
+red-flags.csv
+ignored-search-agency.csv
+qa-summary.csv
+```
+
 ## Generic folder pattern
 
 ```text
@@ -45,7 +77,7 @@ sites/
 - If no confident mapping exists, the URL goes to `red-flags.csv`.
 - The final outputs are CSVs that can be imported into Google Sheets.
 
-## Run locally
+## Run locally without the app
 
 ```bash
 pip install -r requirements.txt
