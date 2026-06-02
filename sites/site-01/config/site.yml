@@ -1,0 +1,22 @@
+site_id: site-01
+site_label: "Site 01"
+
+source_domains:
+  - "example.org"
+  - "www.example.org"
+
+destination_domain: "https://www.massgeneralbrigham.org"
+
+input_files:
+  crawl: "input/crawl.csv"
+  ia_map: "input/ia-map.csv"
+
+manual_exclude:
+  enabled: false
+  file: null
+
+outputs:
+  redirect_list: "output/redirect-list.csv"
+  red_flags: "output/red-flags.csv"
+  ignored_search_agency: "output/ignored-search-agency.csv"
+  qa_summary: "output/qa-summary.csv"
