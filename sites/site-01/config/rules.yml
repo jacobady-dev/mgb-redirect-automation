@@ -1,0 +1,76 @@
+defaults:
+  status_code: 301
+  no_match_output: red_flags
+  no_match_note: "No confident IA-backed destination found. Needs human review."
+
+red_flag_rules:
+  - id: provider_without_confirmed_mapping
+    description: "Provider or doctor URL without confirmed 1:1 destination."
+    match_contains:
+      - "/providers/"
+      - "/provider/"
+      - "/doctors/"
+      - "/doctor/"
+      - "/doctors-providers/"
+    destination: ""
+    note: "Provider URL needs review. No confirmed 1:1 destination found."
+
+  - id: press_or_news_without_ia_destination
+    description: "Press, news, article, blog, or date-footprint URL without confirmed IA destination."
+    match_contains:
+      - "/news/"
+      - "/press/"
+      - "/press-release/"
+      - "/blog/"
+      - "/article/"
+      - "/articles/"
+    match_regex:
+      - "/(19|20)[0-9]{2}/"
+    destination: ""
+    note: "Appear to be press release type content. IA did not show final URL category-level destination."
+
+  - id: asset_without_clear_destination
+    description: "Asset, file, image, video, or document URL needing asset-routing review."
+    file_extensions:
+      - ".pdf"
+      - ".doc"
+      - ".docx"
+      - ".xls"
+      - ".xlsx"
+      - ".ppt"
+      - ".pptx"
+      - ".zip"
+      - ".jpg"
+      - ".jpeg"
+      - ".png"
+      - ".gif"
+      - ".svg"
+      - ".webp"
+      - ".mp4"
+      - ".mov"
+    destination: ""
+    note: "Asset/file URL needs review. No approved asset routing destination found."
+
+redirect_rules:
+  - id: four_xx_catch_all
+    description: "Fallback for crawled 4xx URLs. Review before final deployment."
+    status_code_starts_with: "4"
+    destination: "https://www.massgeneralbrigham.org"
+    note: "4xx catch-all to homepage. Review before final deployment."
+
+  - id: ia_exact_match
+    description: "Use an exact IA destination when the source URL appears in the IA map."
+    type: ia_exact_match
+    source_column_candidates:
+      - "Existing URL"
+      - "Source URL"
+      - "Old URL"
+      - "Address"
+      - "URL"
+    destination_column_candidates:
+      - "Destination URL"
+      - "New URL"
+      - "MGB URL"
+      - "Preview URL"
+      - "Final URL"
+    note: "IA-backed exact match."
