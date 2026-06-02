@@ -29,6 +29,8 @@ from generate_redirects import process_site  # noqa: E402
 
 
 DEFAULT_RULES_PATH = REPO_ROOT / "sites" / "site-01" / "config" / "rules.yml"
+EXCEL_EXTENSIONS = {".xlsx", ".xlsm", ".xls"}
+TEXT_TABLE_EXTENSIONS = {".csv", ".tsv", ".txt"}
 
 
 st.set_page_config(page_title="Redirect Mapping Intake", layout="wide")
@@ -54,6 +56,18 @@ def uploaded_extension(uploaded_file, fallback: str = ".csv") -> str:
         return fallback
     suffix = Path(uploaded_file.name).suffix.lower()
     return suffix or fallback
+
+
+def normalized_input_extension(uploaded_file, fallback: str = ".csv") -> str:
+    """Return the extension the app will save for the processing engine.
+
+    CSV/TSV/TXT uploads are normalized into real comma-separated CSV files.
+    Excel files are preserved as Excel files.
+    """
+    suffix = uploaded_extension(uploaded_file, fallback=fallback)
+    if suffix in TEXT_TABLE_EXTENSIONS:
+        return ".csv"
+    return suffix
 
 
 def build_site_config(
@@ -93,6 +107,32 @@ def save_uploaded_file(uploaded_file, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("wb") as handle:
         handle.write(uploaded_file.getbuffer())
+
+
+def save_uploaded_table(uploaded_file, destination: Path) -> None:
+    """Save uploaded files in a parser-friendly format.
+
+    Screaming Frog exports may be comma-delimited, tab-delimited, or pasted as TXT.
+    This normalizes text-table uploads into clean comma-separated CSV files before
+    the redirect engine reads them.
+    """
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    suffix = uploaded_extension(uploaded_file)
+
+    if suffix in EXCEL_EXTENSIONS:
+        save_uploaded_file(uploaded_file, destination)
+        return
+
+    raw_bytes = uploaded_file.getvalue()
+    try:
+        df = pd.read_csv(io.BytesIO(raw_bytes), sep=None, engine="python")
+    except Exception:
+        df = pd.read_csv(io.BytesIO(raw_bytes), sep="\t")
+
+    if len(df.columns) == 1:
+        df = pd.read_csv(io.BytesIO(raw_bytes), sep="\t")
+
+    df.to_csv(destination, index=False)
 
 
 def zip_outputs(output_dir: Path) -> bytes:
@@ -157,11 +197,11 @@ with st.sidebar:
     st.checkbox("Exclude blocked/noindex/canonicalized URLs", value=True, disabled=True)
     st.checkbox("Exclude existing 3xx redirect rows", value=True, disabled=True)
 
-crawl_file = st.file_uploader("Upload Screaming Frog crawl", type=["csv", "xlsx", "xlsm", "xls"])
-ia_file = st.file_uploader("Upload IA workbook or IA map", type=["csv", "xlsx", "xlsm", "xls"])
+crawl_file = st.file_uploader("Upload Screaming Frog crawl", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
+ia_file = st.file_uploader("Upload IA workbook or IA map", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
 exclude_file = None
 if manual_exclude_enabled:
-    exclude_file = st.file_uploader("Upload manual exclude file", type=["csv", "xlsx", "xlsm", "xls"])
+    exclude_file = st.file_uploader("Upload manual exclude file", type=["csv", "tsv", "txt", "xlsx", "xlsm", "xls"])
 
 with st.expander("Advanced: edit rules.yml for this run"):
     rules_text = st.text_area(
@@ -176,9 +216,9 @@ can_generate = crawl_file is not None and ia_file is not None and (not manual_ex
 if st.button("Generate redirect outputs", type="primary", disabled=not can_generate):
     run_id = f"intake-{uuid.uuid4().hex[:8]}"
     source_domains = [line.strip() for line in source_domains_raw.splitlines() if line.strip()]
-    crawl_ext = uploaded_extension(crawl_file)
-    ia_ext = uploaded_extension(ia_file, fallback=".xlsx")
-    exclude_ext = uploaded_extension(exclude_file) if manual_exclude_enabled else ".csv"
+    crawl_ext = normalized_input_extension(crawl_file)
+    ia_ext = normalized_input_extension(ia_file, fallback=".xlsx")
+    exclude_ext = normalized_input_extension(exclude_file) if manual_exclude_enabled else ".csv"
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_root = Path(tmp)
@@ -193,10 +233,10 @@ if st.button("Generate redirect outputs", type="primary", disabled=not can_gener
         config_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        save_uploaded_file(crawl_file, input_dir / f"crawl{crawl_ext}")
-        save_uploaded_file(ia_file, input_dir / f"ia-map{ia_ext}")
+        save_uploaded_table(crawl_file, input_dir / f"crawl{crawl_ext}")
+        save_uploaded_table(ia_file, input_dir / f"ia-map{ia_ext}")
         if manual_exclude_enabled and exclude_file is not None:
-            save_uploaded_file(exclude_file, input_dir / f"manual-exclude{exclude_ext}")
+            save_uploaded_table(exclude_file, input_dir / f"manual-exclude{exclude_ext}")
 
         site_config = build_site_config(
             site_id=run_id,
