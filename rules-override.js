@@ -3,14 +3,21 @@
 
 const MGB_DESTINATIONS = {
   nwhLocation: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/locations/newton-wellesley-hospital",
+  cooleyLocation: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/locations/cooley-dickinson-hospital",
+  mvhLocation: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/locations/marthas-vineyard-hospital",
+  nchLocation: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/locations/nantucket-cottage-hospital",
+  salemLocation: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/locations/salem-hospital",
   providers: "https://www.massgeneralbrigham.org/en/providers",
   services: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties",
   patientVisitor: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information",
   billing: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information/billing",
+  cmsChargeData: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information/billing/cms-required-hospital-charge-data",
   financialAssistance: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information/financial-assistance",
   medicalRecords: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information/medical-records",
   patientGateway: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information/patient-gateway",
   visitorPolicy: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information/planning-your-visit/visitor-policy",
+  webPrivacyPolicy: "https://www.massgeneralbrigham.org/en/notices/web-privacy-policy",
+  medicalProfessionals: "https://www.massgeneralbrigham.org/en/medical-professionals",
   careers: "https://www.massgeneralbrigham.org/en/about/careers",
   giving: "https://www.massgeneralbrigham.org/en/about/newton-wellesley-hospital/giving",
   imaging: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/imaging",
@@ -19,6 +26,7 @@ const MGB_DESTINATIONS = {
   sportsMedicine: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/sports-medicine",
   rehabilitation: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/rehabilitation",
   cancer: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/cancer",
+  lungCancerScreening: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/cancer/lung-cancer-screening",
   obgynConcept: "https://www.massgeneralbrigham.org/en/about/complex-obstetrics-and-gynecology-care",
   painManagement: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/pain-management",
   mentalHealth: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/mental-health-psychiatry",
@@ -48,6 +56,10 @@ function textForRow(row) {
 
 function pathForRow(row) {
   return pathFromUrl(row.sourceUrl || "").toLowerCase();
+}
+
+function hostForRow(row) {
+  try { return new URL(row.sourceUrl || "").hostname.toLowerCase(); } catch { return ""; }
 }
 
 function destinationHost(url) {
@@ -88,6 +100,65 @@ function isGiftOrDevelopmentHumanReview(row) {
     text.includes("gift planning") ||
     text.includes("planned giving") ||
     path.includes("/development-office/");
+}
+
+function isMedicalEducationSource(row) {
+  const path = pathForRow(row);
+  const text = textForRow(row);
+  return path.includes("/medical-education/") ||
+    text.includes("medical education") ||
+    text.includes("for medical professionals") ||
+    text.includes("for physicians");
+}
+
+function isPrivacyPolicySource(row) {
+  const text = textForRow(row);
+  const path = pathForRow(row);
+  return path.includes("privacy-policy") || text.includes("privacy policy");
+}
+
+function isCmsChargeDataSource(row) {
+  const text = textForRow(row);
+  const path = pathForRow(row);
+  return path.includes("cms-required-hospital-charge-data") || text.includes("cms required hospital charge data") || text.includes("charge data");
+}
+
+function isSpiritualCareSource(row) {
+  const text = textForRow(row);
+  const path = pathForRow(row);
+  return path.includes("spiritual-care") || text.includes("spiritual care") || text.includes("multifaith") || text.includes("multi-faith");
+}
+
+function hospitalProfileForSource(row) {
+  const host = hostForRow(row);
+  const text = textForRow(row);
+  if (host.includes("nwh.org") || text.includes("newton-wellesley")) return MGB_DESTINATIONS.nwhLocation;
+  if (host.includes("cooley") || text.includes("cooley dickinson")) return MGB_DESTINATIONS.cooleyLocation;
+  if (host.includes("mvhospital") || text.includes("martha's vineyard") || text.includes("marthas vineyard")) return MGB_DESTINATIONS.mvhLocation;
+  if (host.includes("nantucket") || text.includes("nantucket cottage")) return MGB_DESTINATIONS.nchLocation;
+  if (host.includes("salem") || text.includes("salem hospital")) return MGB_DESTINATIONS.salemLocation;
+  return "";
+}
+
+function isHospitalInstitutionalSource(row) {
+  const path = pathForRow(row);
+  const text = textForRow(row);
+  if (isServiceSectionSource(row) || isMedicalEducationSource(row) || isGiftOrDevelopmentHumanReview(row)) return false;
+  if (isPrivacyPolicySource(row) || isCmsChargeDataSource(row) || isSpiritualCareSource(row)) return false;
+  return path.includes("/about-us") ||
+    path.includes("/about-") ||
+    path.includes("/history") ||
+    path.includes("/leadership") ||
+    path.includes("/mission") ||
+    path.includes("/awards") ||
+    path.includes("/quality") ||
+    path.includes("/who-we-are") ||
+    text.includes("about the hospital") ||
+    text.includes("about newton-wellesley") ||
+    text.includes("about cooley dickinson") ||
+    text.includes("about martha") ||
+    text.includes("about nantucket cottage") ||
+    text.includes("about salem hospital");
 }
 
 function isGuideOrArticleLikeSource(row) {
@@ -212,16 +283,17 @@ function bestCandidateForTerms(destinationCandidates, terms) {
 function serviceConceptRoute(row) {
   const text = textForRow(row);
 
+  if (text.includes("lung cancer") || (text.includes("low-dose ct") && text.includes("cancer")) || (text.includes("low dose ct") && text.includes("cancer"))) return route(MGB_DESTINATIONS.lungCancerScreening, "Lung cancer / cancer screening content mapped to MGB Lung Cancer Screening", "Lung cancer or low-dose CT cancer-screening content mapped to MGB Lung Cancer Screening", 0.95);
   if (text.includes("diabetes in pregnancy") || text.includes("gestational diabetes")) return route(MGB_DESTINATIONS.diabetesPregnancy, "Gestational diabetes mapped to diabetes-in-pregnancy content", "Gestational diabetes mapped to diabetes-in-pregnancy content", 0.9);
   if (text.includes("endocrinology") || text.includes("diabetes")) return route(MGB_DESTINATIONS.diabetes, "Diabetes/endocrinology mapped to MGB Diabetes", "Diabetes/endocrinology mapped to MGB Diabetes", 0.9);
   if (text.includes("weight loss") || text.includes("bariatric")) return route(MGB_DESTINATIONS.bariatric, "Weight loss/bariatric content mapped to Weight Loss Surgery", "Weight loss/bariatric content mapped to Weight Loss Surgery", 0.9);
   if (text.includes("spine")) return route(MGB_DESTINATIONS.orthoSpine, "Spine mapped to MGB orthopedics spine page", "Spine mapped to MGB orthopedics spine page", 0.9);
   if (text.includes("sports medicine")) return route(MGB_DESTINATIONS.sportsMedicine, "Sports medicine mapped to MGB Sports Medicine", "Sports medicine mapped to MGB Sports Medicine", 0.9);
   if (text.includes("joint") || text.includes("kaplan") || text.includes("orthopedic") || text.includes("orthopedics")) return route(MGB_DESTINATIONS.orthopedics, "Orthopedics mapped to MGB Orthopedics", "Orthopedics mapped to MGB Orthopedics", 0.9);
+  if (text.includes("breast") || text.includes("cancer") || text.includes("oncology") || text.includes("tumor")) return route(MGB_DESTINATIONS.cancer, "Cancer mapped to MGB Cancer Institute", "Cancer mapped to MGB Cancer Institute", 0.9);
   if (text.includes("ct scan") || text.includes("radiology") || text.includes("imaging") || text.includes("mri") || text.includes("ultrasound") || text.includes("x-ray")) return route(MGB_DESTINATIONS.imaging, "Radiology/imaging mapped to MGB Imaging", "Radiology/imaging mapped to MGB Imaging", 0.88);
   if (text.includes("rehabilitation") || text.includes("physical therapy") || text.includes("occupational therapy") || text.includes("hand therapy")) return route(MGB_DESTINATIONS.rehabilitation, "Rehabilitation mapped to MGB Rehabilitation", "Rehabilitation mapped to MGB Rehabilitation", 0.9);
   if (text.includes("maternity") || text.includes("obstetrics") || text.includes("gynecology") || text.includes("ob-gyn") || text.includes("obgyn") || text.includes("childbirth") || text.includes("women's health") || text.includes("womens health")) return route(MGB_DESTINATIONS.obgynConcept, "Maternity/OB-GYN mapped to OB/GYN concept", "Maternity mapped to OB/GYN concept", 0.88);
-  if (text.includes("breast") || text.includes("cancer") || text.includes("oncology") || text.includes("tumor")) return route(MGB_DESTINATIONS.cancer, "Cancer mapped to MGB Cancer Institute", "Cancer mapped to MGB Cancer Institute", 0.9);
   if (text.includes("heart failure") || text.includes("cardiology") || text.includes("cardiovascular")) return route(MGB_DESTINATIONS.cardiology, "Cardiology/cardiovascular mapped to MGB Cardiology", "Cardiology/cardiovascular mapped to MGB Cardiology", 0.9);
   if (text.includes("heart")) return route(MGB_DESTINATIONS.heart, "Heart content mapped to MGB Heart", "Heart content mapped to MGB Heart", 0.88);
   if (text.includes("primary care")) return route(MGB_DESTINATIONS.primaryCare, "Primary care mapped to Primary Care", "Primary care mapped to Primary Care", 0.9);
@@ -249,8 +321,13 @@ function categoryFallback(row, destinationCandidates) {
   if (isGuideOrArticleLikeSource(row) || isVolunteerProgramSource(row) || isGiftOrDevelopmentHumanReview(row)) return null;
 
   if (path === "/" || path === "") {
-    return route(MGB_DESTINATIONS.nwhLocation, "Root/home mapped to NWH location page", "Root/home mapped to NWH location page", 0.9);
+    const hospitalProfile = hospitalProfileForSource(row) || MGB_DESTINATIONS.nwhLocation;
+    return route(hospitalProfile, "Root/home mapped to hospital profile", "Root/home mapped to the matching MGB hospital profile/location page", 0.9);
   }
+
+  if (isCmsChargeDataSource(row)) return route(MGB_DESTINATIONS.cmsChargeData, "CMS charge data mapped to MGB CMS charge data", "CMS required hospital charge data mapped to MGB CMS charge data", 0.95);
+  if (isPrivacyPolicySource(row)) return route(MGB_DESTINATIONS.webPrivacyPolicy, "Privacy policy mapped to MGB Web Privacy Policy", "Privacy policy maps to MGB website privacy notice", 0.95);
+  if (isMedicalEducationSource(row)) return route(MGB_DESTINATIONS.medicalProfessionals, "Medical education/professional resource mapped to Medical Professionals", "Medical education and physician/professional resource content mapped to MGB Medical Professionals", 0.86);
 
   if (text.includes("find-a-doctor") || text.includes("find a doctor") || text.includes("provider") || text.includes("doctor profile")) {
     return route(MGB_DESTINATIONS.providers, "Provider/FAD URL mapped to centralized provider directory", "Provider/FAD URL mapped to centralized provider directory unless manually mapped 1:1", 0.9);
@@ -259,7 +336,7 @@ function categoryFallback(row, destinationCandidates) {
   const serviceRoute = serviceConceptRoute(row);
   if (serviceRoute) return serviceRoute;
 
-  if (text.includes("billing") || text.includes("insurance") || text.includes("charge data")) return route(MGB_DESTINATIONS.billing, "Billing/insurance mapped to MGB Billing", "Billing/insurance mapped to MGB Billing", 0.86);
+  if (text.includes("billing") || text.includes("insurance")) return route(MGB_DESTINATIONS.billing, "Billing/insurance mapped to MGB Billing", "Billing/insurance mapped to MGB Billing", 0.86);
   if (text.includes("financial assistance")) return route(MGB_DESTINATIONS.financialAssistance, "Financial assistance mapped to MGB Financial Assistance", "Financial assistance mapped to MGB Financial Assistance", 0.9);
   if (text.includes("medical records")) return route(MGB_DESTINATIONS.medicalRecords, "Medical records mapped to MGB Medical Records", "Medical records mapped to MGB Medical Records", 0.9);
   if (text.includes("patient gateway")) return route(MGB_DESTINATIONS.patientGateway, "Patient Gateway category fallback", "Patient Gateway mapped to MGB Patient Gateway", 0.9);
@@ -268,8 +345,14 @@ function categoryFallback(row, destinationCandidates) {
 
   if (text.includes("giving") || text.includes("gift") || text.includes("donor") || text.includes("fund")) return route(MGB_DESTINATIONS.giving, "Giving content mapped to NWH giving", "General giving content mapped to NWH giving. Development-office, gift-planning, and gift-shop URLs are held for HUMAN CHECK before this rule.", 0.8);
 
+  if (isHospitalInstitutionalSource(row)) {
+    const hospitalProfile = hospitalProfileForSource(row);
+    if (hospitalProfile) return route(hospitalProfile, "Hospital institutional page mapped to hospital profile", "Hospital-level institutional content mapped to the matching MGB hospital profile/location page. Service/admin/news/provider intent rules are checked before this fallback.", 0.86);
+  }
+
   if (!isServiceSectionSource(row) && (text.includes("directions") || text.includes("parking") || text.includes("visiting hours") || text.includes("hours and locations"))) {
-    return route(MGB_DESTINATIONS.nwhLocation, "Location/directions/contact mapped to NWH location page", "Location/directions/contact mapped to NWH location page", 0.85);
+    const hospitalProfile = hospitalProfileForSource(row) || MGB_DESTINATIONS.nwhLocation;
+    return route(hospitalProfile, "Location/directions/contact mapped to hospital profile", "Location/directions/contact mapped to the matching MGB hospital profile/location page", 0.85);
   }
 
   if (text.includes("visitor") || text.includes("visiting") || text.includes("mask policy")) return route(MGB_DESTINATIONS.visitorPolicy, "Visitor information mapped to MGB visitor policy/planning content", "Visitor information mapped to MGB visitor policy/planning content", 0.82);
@@ -278,7 +361,8 @@ function categoryFallback(row, destinationCandidates) {
 
   if (!isServiceSectionSource(row) && (path.includes("/about-us") || path.includes("/contact-us"))) {
     if (path.includes("press-room")) return null;
-    return route(MGB_DESTINATIONS.nwhLocation, "About/general hospital content mapped to NWH location page", "About/general hospital content mapped to NWH location page", 0.85);
+    const hospitalProfile = hospitalProfileForSource(row) || MGB_DESTINATIONS.nwhLocation;
+    return route(hospitalProfile, "About/general hospital content mapped to hospital profile", "About/general hospital content mapped to the matching MGB hospital profile/location page", 0.85);
   }
 
   if (text.includes("surgery") || text.includes("procedure") || text.includes("treatment") || text.includes("medical-services")) {
@@ -305,6 +389,10 @@ function decideMapping(row, destinationCandidates) {
     return human(suggested, "Legacy code-style URL requires HUMAN CHECK", "Legacy ContentPage.aspx or id/nd style URL. Use /en/providers only if the page is confirmed provider/FAD content.", 0.25);
   }
 
+  if (isPrivacyPolicySource(row)) return redirect(MGB_DESTINATIONS.webPrivacyPolicy, "Privacy policy mapped to MGB Web Privacy Policy", "Privacy policy maps to MGB website privacy notice", 0.95);
+  if (isCmsChargeDataSource(row)) return redirect(MGB_DESTINATIONS.cmsChargeData, "CMS charge data mapped to MGB CMS charge data", "CMS required hospital charge data mapped to MGB CMS charge data", 0.95);
+  if (isMedicalEducationSource(row)) return redirect(MGB_DESTINATIONS.medicalProfessionals, "Medical education/professional resource mapped to Medical Professionals", "Medical education and physician/professional resource content mapped to MGB Medical Professionals", 0.86);
+
   // Locked behavior from the reference-workbook decision: provider detail/profile pages map to /en/providers.
   if (isProviderDetail(sourceUrl)) return redirect(MGB_DESTINATIONS.providers, "Provider/FAD URL mapped to centralized provider directory", "Provider/FAD URL mapped to centralized provider directory unless manually mapped 1:1", 0.9);
   if (isProviderDirectory(sourceUrl)) return redirect(MGB_DESTINATIONS.providers, "Provider directory mapped to centralized provider directory", "Provider directory pages map to the MGB provider directory.", 0.9);
@@ -319,6 +407,10 @@ function decideMapping(row, destinationCandidates) {
   if (isGiftOrDevelopmentHumanReview(row)) {
     const suggested = pathForRow(row).includes("gift-shop") || textForRow(row).includes("gift shop") ? "" : MGB_DESTINATIONS.giving;
     return human(suggested, "Gift shop / development / gift planning requires HUMAN CHECK", "Gift shop, development-office, and gift-planning URLs should not be force-mapped to Giving without review.", 0.25);
+  }
+
+  if (isSpiritualCareSource(row)) {
+    return human(MGB_DESTINATIONS.patientVisitor, "Spiritual care / multifaith content requires HUMAN CHECK", "Spiritual care or multifaith prayer content should not be force-mapped to visitor policy. Review against patient/visitor resources.", 0.25);
   }
 
   if (isGuideOrArticleLikeSource(row)) {
