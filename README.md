@@ -1,6 +1,6 @@
 # MGB Redirect Automation
 
-A browser-based redirect mapping portal for Mass General Brigham migration work, plus an optional local AI review script for higher-risk redirect decisions.
+A browser-based redirect mapping portal for Mass General Brigham migration work.
 
 The browser app is designed to mirror the MGB redirect workbook workflow while keeping upload handling simple and safe. Users open the GitHub Pages URL, upload their files, generate the workbook locally in the browser, then download the finished output.
 
@@ -116,72 +116,9 @@ Important handling rules:
 - News, article, press release, and historical-update pages are flagged for `HUMAN CHECK` unless a strong specific Newsroom destination exists.
 - Bad general-purpose destinations such as random Newsroom pages, patient stories, locations, fraud alerts, and unrelated subdomains are filtered from general fuzzy matching.
 
-## Optional local AI review workflow
-
-The browser app stays rule-based and does not expose any API keys.
-
-For a local AI pass, generate a workbook first, then run:
-
-```bash
-pip install -r requirements.txt
-export OPENAI_API_KEY="your_api_key_here"
-python scripts/ai_review_workbook.py "outputs/generated_workbook.xlsx" --max-rows 100
-```
-
-On Windows PowerShell:
-
-```powershell
-$env:OPENAI_API_KEY="your_api_key_here"
-python scripts/ai_review_workbook.py "outputs/generated_workbook.xlsx" --max-rows 100
-```
-
-The script reviews rows from:
-
-```text
-HUMAN CHECK
-Redirect List for CSV rows with REVIEW/risk language
-```
-
-It adds adjacent AI columns instead of overwriting the mapping by default:
-
-```text
-AI Decision
-AI Risk Level
-AI Recommended Destination
-AI Notes
-AI Flags
-```
-
-The default behavior is intentionally conservative:
-
-- It does not overwrite `Destination URL`.
-- It does not overwrite `DW - Approval`.
-- It reviews likely-problem rows first.
-- It can be limited with `--max-rows` for cost control.
-
-Optional flags:
-
-```bash
-# Review every redirect row too, not just flagged/HUMAN CHECK rows
-python scripts/ai_review_workbook.py workbook.xlsx --include-clean-redirects
-
-# Let the AI recommendation overwrite Destination URL for approve/review decisions
-python scripts/ai_review_workbook.py workbook.xlsx --apply-ai-destination
-```
-
-Recommended first run:
-
-```bash
-python scripts/ai_review_workbook.py "nwh-redirect-mapping_Redirect_Mapping_Workbook.xlsx" --max-rows 25
-```
-
-Review that output manually before running the full workbook.
-
 ## Privacy / file handling
 
 The current portal is a static browser app. Uploaded files are processed locally in the user's browser. They are not committed to GitHub and are not stored by the app.
-
-The optional AI review script runs locally on your machine. It sends only selected row context and candidate destinations to the OpenAI API during review.
 
 ## GitHub Pages
 
