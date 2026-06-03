@@ -12,12 +12,13 @@
       <p class="eyebrow">Mass General Brigham migration utility</p>
       <h1>Redirect Mapper</h1>
       <p class="lede">
-        Upload a source crawl, manual exclude/key file, MGB destination crawl, and optional IA workbook.
-        The tool processes everything locally in your browser and downloads an MGB-style redirect workbook.
+        Upload a source crawl and manual exclude/key file. The tool uses bundled MGB destination and IA references by default,
+        processes everything locally in your browser, and downloads an MGB-style redirect workbook.
       </p>
       <div class="badges">
         <span>Local browser processing</span>
         <span>No client files stored</span>
+        <span>Bundled MGB reference data</span>
         <span>Manual excludes stay out of CSV</span>
       </div>
     </section>
@@ -38,7 +39,7 @@
           <input id="destinationDomain" type="text" value="https://www.massgeneralbrigham.org" />
         </label>
 
-        <div class="file-grid">
+        <div class="file-grid primary-files">
           <label class="file-drop required">
             <span class="file-title">1. Source site crawl</span>
             <span class="file-help">Screaming Frog export for the legacy site.</span>
@@ -49,17 +50,28 @@
             <span class="file-help">Manual Mapping Key or Manually Mapped URLs (exclude).</span>
             <input id="manualFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls" required />
           </label>
-          <label class="file-drop required">
-            <span class="file-title">3. MGB destination crawl</span>
-            <span class="file-help">Screaming Frog export of massgeneralbrigham.org destinations.</span>
-            <input id="destinationCrawl" type="file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls" required />
-          </label>
-          <label class="file-drop">
-            <span class="file-title">4. MGB IA doc</span>
-            <span class="file-help">Optional, but helpful for IA/category matching.</span>
-            <input id="iaFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls" />
-          </label>
         </div>
+
+        <div class="reference-note">
+          <strong>Reference data loaded by default</strong>
+          <span>MGB destination and IA references are bundled into the tool. Use the advanced section only when you need to override them.</span>
+        </div>
+
+        <details class="rules">
+          <summary>Advanced: override bundled MGB reference files</summary>
+          <div class="file-grid advanced-files">
+            <label class="file-drop">
+              <span class="file-title">MGB destination crawl override</span>
+              <span class="file-help">Optional. Upload when the destination crawl has changed.</span>
+              <input id="destinationCrawl" type="file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls" />
+            </label>
+            <label class="file-drop">
+              <span class="file-title">MGB IA doc override</span>
+              <span class="file-help">Optional. Upload when the IA workbook has changed.</span>
+              <input id="iaFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls" />
+            </label>
+          </div>
+        </details>
 
         <details class="rules">
           <summary>Mapping assumptions</summary>
@@ -78,6 +90,7 @@
       <aside class="panel status-panel">
         <h2>Processing summary</h2>
         <pre id="log" aria-live="polite">Awaiting uploads...
+MGB reference data is already loaded.
 Files stay local until the workbook is downloaded.</pre>
         <div id="summary" class="summary"></div>
         <div class="actions">
@@ -97,5 +110,6 @@ Files stay local until the workbook is downloaded.</pre>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>
+  <script src="reference-data.js"></script>
 </body>
 </html>
