@@ -13,15 +13,15 @@ const MGB_DESTINATIONS = {
   visitorPolicy: "https://www.massgeneralbrigham.org/en/patient-care/patient-visitor-information/planning-your-visit/visitor-policy",
   careers: "https://www.massgeneralbrigham.org/en/about/careers",
   giving: "https://www.massgeneralbrigham.org/en/about/newton-wellesley-hospital/giving",
-  imaging: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/radiology-and-imaging",
+  imaging: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/imaging",
   orthopedics: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/orthopedics",
   orthoSpine: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/orthopedics/conditions/spine",
   sportsMedicine: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/sports-medicine",
   rehabilitation: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/rehabilitation",
   cancer: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/cancer",
-  obgynConcept: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/obstetrics-and-gynecology",
+  obgynConcept: "https://www.massgeneralbrigham.org/en/about/complex-obstetrics-and-gynecology-care",
   painManagement: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/pain-management",
-  mentalHealth: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/psychiatry",
+  mentalHealth: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/mental-health-psychiatry",
   sleepMedicine: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/sleep-medicine",
   pediatrics: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/pediatrics",
   primaryCare: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/primary-care",
@@ -30,7 +30,7 @@ const MGB_DESTINATIONS = {
   diabetesPregnancy: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/diabetes-in-pregnancy",
   gastroenterology: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/gastroenterology",
   infectiousDisease: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/infectious-diseases",
-  neurology: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/neurology",
+  neurology: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/neuroscience/neurology",
   urology: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/urology",
   dermatology: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/dermatology",
   allergy: "https://www.massgeneralbrigham.org/en/patient-care/services-and-specialties/allergy-and-immunology",
@@ -72,6 +72,22 @@ function isBadGeneralPurposeDestination(url) {
 function isErrorStatus(row) {
   const status = String(row.statusCode || row["Status Code"] || "").trim();
   return /^4\d\d/.test(status) || /^5\d\d/.test(status);
+}
+
+function isLegacyCodeLookingSource(row) {
+  const url = String(row.sourceUrl || "").toLowerCase();
+  return url.includes("contentpage.aspx") || (/[?&]id=\d+/.test(url) && /[?&]nd=\d+/.test(url));
+}
+
+function isGiftOrDevelopmentHumanReview(row) {
+  const text = textForRow(row);
+  const path = pathForRow(row);
+  return path.includes("gift-shop") ||
+    text.includes("gift shop") ||
+    path.includes("giftplanning") ||
+    text.includes("gift planning") ||
+    text.includes("planned giving") ||
+    path.includes("/development-office/");
 }
 
 function isGuideOrArticleLikeSource(row) {
@@ -202,16 +218,16 @@ function serviceConceptRoute(row) {
   if (text.includes("spine")) return route(MGB_DESTINATIONS.orthoSpine, "Spine mapped to MGB orthopedics spine page", "Spine mapped to MGB orthopedics spine page", 0.9);
   if (text.includes("sports medicine")) return route(MGB_DESTINATIONS.sportsMedicine, "Sports medicine mapped to MGB Sports Medicine", "Sports medicine mapped to MGB Sports Medicine", 0.9);
   if (text.includes("joint") || text.includes("kaplan") || text.includes("orthopedic") || text.includes("orthopedics")) return route(MGB_DESTINATIONS.orthopedics, "Orthopedics mapped to MGB Orthopedics", "Orthopedics mapped to MGB Orthopedics", 0.9);
-  if (text.includes("ct scan") || text.includes("radiology") || text.includes("imaging") || text.includes("mri") || text.includes("ultrasound") || text.includes("x-ray")) return route(MGB_DESTINATIONS.imaging, "Radiology/imaging mapped to MGB Radiology and Imaging", "Radiology/imaging mapped to MGB Radiology and Imaging", 0.88);
+  if (text.includes("ct scan") || text.includes("radiology") || text.includes("imaging") || text.includes("mri") || text.includes("ultrasound") || text.includes("x-ray")) return route(MGB_DESTINATIONS.imaging, "Radiology/imaging mapped to MGB Imaging", "Radiology/imaging mapped to MGB Imaging", 0.88);
   if (text.includes("rehabilitation") || text.includes("physical therapy") || text.includes("occupational therapy") || text.includes("hand therapy")) return route(MGB_DESTINATIONS.rehabilitation, "Rehabilitation mapped to MGB Rehabilitation", "Rehabilitation mapped to MGB Rehabilitation", 0.9);
-  if (text.includes("maternity") || text.includes("obstetrics") || text.includes("gynecology") || text.includes("ob-gyn") || text.includes("obgyn") || text.includes("childbirth")) return route(MGB_DESTINATIONS.obgynConcept, "Maternity/OB-GYN mapped to OB/GYN concept", "Maternity mapped to OB/GYN concept", 0.88);
+  if (text.includes("maternity") || text.includes("obstetrics") || text.includes("gynecology") || text.includes("ob-gyn") || text.includes("obgyn") || text.includes("childbirth") || text.includes("women's health") || text.includes("womens health")) return route(MGB_DESTINATIONS.obgynConcept, "Maternity/OB-GYN mapped to OB/GYN concept", "Maternity mapped to OB/GYN concept", 0.88);
   if (text.includes("breast") || text.includes("cancer") || text.includes("oncology") || text.includes("tumor")) return route(MGB_DESTINATIONS.cancer, "Cancer mapped to MGB Cancer Institute", "Cancer mapped to MGB Cancer Institute", 0.9);
   if (text.includes("heart failure") || text.includes("cardiology") || text.includes("cardiovascular")) return route(MGB_DESTINATIONS.cardiology, "Cardiology/cardiovascular mapped to MGB Cardiology", "Cardiology/cardiovascular mapped to MGB Cardiology", 0.9);
   if (text.includes("heart")) return route(MGB_DESTINATIONS.heart, "Heart content mapped to MGB Heart", "Heart content mapped to MGB Heart", 0.88);
   if (text.includes("primary care")) return route(MGB_DESTINATIONS.primaryCare, "Primary care mapped to Primary Care", "Primary care mapped to Primary Care", 0.9);
   if (text.includes("emergency") || text.includes("er wait") || text.includes("urgent care")) return route(MGB_DESTINATIONS.emergency, "Emergency mapped to Emergency Care", "Emergency mapped to Emergency Care", 0.85);
   if (text.includes("pain management")) return route(MGB_DESTINATIONS.painManagement, "Pain management mapped to MGB Pain Management", "Pain management mapped to MGB Pain Management", 0.9);
-  if (text.includes("psychiatry") || text.includes("mental health") || text.includes("substance use")) return route(MGB_DESTINATIONS.mentalHealth, "Mental health mapped to MGB Psychiatry", "Mental health mapped to MGB Psychiatry", 0.9);
+  if (text.includes("psychiatry") || text.includes("mental health") || text.includes("substance use")) return route(MGB_DESTINATIONS.mentalHealth, "Mental health mapped to MGB Mental Health Psychiatry", "Mental health mapped to MGB Mental Health Psychiatry", 0.9);
   if (text.includes("sleep")) return route(MGB_DESTINATIONS.sleepMedicine, "Sleep mapped to MGB Sleep Medicine", "Sleep mapped to MGB Sleep Medicine", 0.9);
   if (text.includes("pediatric")) return route(MGB_DESTINATIONS.pediatrics, "Pediatrics mapped to MGB Pediatrics", "Pediatrics mapped to MGB Pediatrics", 0.9);
   if (text.includes("gastro") || text.includes("digestive") || text.includes("heartburn")) return route(MGB_DESTINATIONS.gastroenterology, "Gastroenterology mapped to MGB Gastroenterology", "Gastroenterology mapped to MGB Gastroenterology", 0.88);
@@ -230,7 +246,7 @@ function categoryFallback(row, destinationCandidates) {
   const text = textForRow(row);
   const path = pathForRow(row);
 
-  if (isGuideOrArticleLikeSource(row) || isVolunteerProgramSource(row)) return null;
+  if (isGuideOrArticleLikeSource(row) || isVolunteerProgramSource(row) || isGiftOrDevelopmentHumanReview(row)) return null;
 
   if (path === "/" || path === "") {
     return route(MGB_DESTINATIONS.nwhLocation, "Root/home mapped to NWH location page", "Root/home mapped to NWH location page", 0.9);
@@ -250,7 +266,7 @@ function categoryFallback(row, destinationCandidates) {
 
   if (text.includes("careers") || text.includes("job") || text.includes("employment") || text.includes("workforce development")) return route(MGB_DESTINATIONS.careers, "Career URL mapped to MGB Careers", "Career URL mapped to MGB Careers", 0.9);
 
-  if (text.includes("giving") || text.includes("gift") || text.includes("donor") || text.includes("fund") || path.includes("/development-office/")) return route(MGB_DESTINATIONS.giving, "Giving/development content mapped to NWH giving", "Giving/development content mapped to NWH giving", 0.8);
+  if (text.includes("giving") || text.includes("gift") || text.includes("donor") || text.includes("fund")) return route(MGB_DESTINATIONS.giving, "Giving content mapped to NWH giving", "General giving content mapped to NWH giving. Development-office, gift-planning, and gift-shop URLs are held for HUMAN CHECK before this rule.", 0.8);
 
   if (!isServiceSectionSource(row) && (text.includes("directions") || text.includes("parking") || text.includes("visiting hours") || text.includes("hours and locations"))) {
     return route(MGB_DESTINATIONS.nwhLocation, "Location/directions/contact mapped to NWH location page", "Location/directions/contact mapped to NWH location page", 0.85);
@@ -284,6 +300,11 @@ function decideMapping(row, destinationCandidates) {
     return human("", "HTTP error status requires HUMAN CHECK", "4xx/5xx HTML URL. Review before choosing a redirect destination.", 0);
   }
 
+  if (isLegacyCodeLookingSource(row)) {
+    const suggested = textForRow(row).includes("provider") || textForRow(row).includes("doctor") || textForRow(row).includes("find-a-doctor") ? MGB_DESTINATIONS.providers : "";
+    return human(suggested, "Legacy code-style URL requires HUMAN CHECK", "Legacy ContentPage.aspx or id/nd style URL. Use /en/providers only if the page is confirmed provider/FAD content.", 0.25);
+  }
+
   // Locked behavior from the reference-workbook decision: provider detail/profile pages map to /en/providers.
   if (isProviderDetail(sourceUrl)) return redirect(MGB_DESTINATIONS.providers, "Provider/FAD URL mapped to centralized provider directory", "Provider/FAD URL mapped to centralized provider directory unless manually mapped 1:1", 0.9);
   if (isProviderDirectory(sourceUrl)) return redirect(MGB_DESTINATIONS.providers, "Provider directory mapped to centralized provider directory", "Provider directory pages map to the MGB provider directory.", 0.9);
@@ -293,6 +314,11 @@ function decideMapping(row, destinationCandidates) {
   if (isNewsOrArticle(sourceUrl, row.title, row.h1)) {
     if (best && best.score >= 0.84 && best.destinationUrl.includes("/about/newsroom/")) return redirect(best.destinationUrl, "Strong newsroom article match", "Mapped only because a strong specific MGB Newsroom destination was found.", best.score);
     return human(best?.destinationUrl || "", "News / article / press release requires HUMAN CHECK", NEWS_HUMAN_CHECK_NOTE, best?.score || 0);
+  }
+
+  if (isGiftOrDevelopmentHumanReview(row)) {
+    const suggested = pathForRow(row).includes("gift-shop") || textForRow(row).includes("gift shop") ? "" : MGB_DESTINATIONS.giving;
+    return human(suggested, "Gift shop / development / gift planning requires HUMAN CHECK", "Gift shop, development-office, and gift-planning URLs should not be force-mapped to Giving without review.", 0.25);
   }
 
   if (isGuideOrArticleLikeSource(row)) {
