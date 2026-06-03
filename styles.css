@@ -166,6 +166,31 @@ summary:focus-visible {
   font-size: 13px;
 }
 
+.reference-note {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 16px;
+  padding: 14px 15px;
+  border: 1px solid rgba(6, 118, 71, 0.2);
+  border-radius: var(--radius-md);
+  background: var(--success-soft);
+}
+
+.reference-note strong {
+  color: var(--success);
+  font-size: 14px;
+}
+
+.reference-note span {
+  color: #315c49;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.advanced-files {
+  margin-bottom: 4px;
+}
+
 input[type="file"] {
   width: 100%;
   color: var(--muted);
