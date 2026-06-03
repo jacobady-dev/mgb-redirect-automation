@@ -2,6 +2,9 @@
 // Loaded after rules-deep-research.js and before output-format.js.
 // This keeps the deep-research workbook behavior but tightens remaining edge cases.
 
+// Provider discrepancy policy: keep provider/FAD redirects aligned with the MGB reference workbook.
+MGB_DESTINATIONS.providers = "https://www.massgeneralbrigham.org/en/providers";
+
 function ftPath(row) { return pathFromUrl(row.sourceUrl || "").toLowerCase(); }
 function ftText(row) { return textForRow(row); }
 function ftDest(row) { return String(row.destinationUrl || row["Destination URL"] || "").toLowerCase(); }
@@ -68,7 +71,7 @@ function ftIsProviderOnly(row) {
 const decideMappingBeforeFinalTuning = decideMapping;
 decideMapping = function finalTuningDecideMapping(row, destinationCandidates) {
   if (ftIsProviderOnly(row)) {
-    return redirect(MGB_DESTINATIONS.providers, "Provider URL mapped to live provider directory", "Find-a-doctor/profile-style URL mapped to the live MGB provider directory.", 0.95);
+    return redirect(MGB_DESTINATIONS.providers, "Provider/FAD URL mapped to MGB Providers", "Find-a-doctor/profile-style URL mapped to the reference MGB provider directory, not the provider microsite.", 0.95);
   }
 
   if (ftIsPressOrNews(row)) {
