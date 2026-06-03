@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MGB Redirect Mapper</title>
-  <link rel="stylesheet" href="styles.css?v=20260603-3" />
+  <link rel="stylesheet" href="styles.css?v=20260603-4" />
 </head>
 <body>
   <main class="shell">
@@ -77,9 +77,9 @@
           <summary>Mapping assumptions</summary>
           <ul>
             <li>Manual exclude URLs are copied to their own tab and removed from automated processing.</li>
-            <li>Provider pages are mapped to the live MGB provider directory unless manually mapped 1:1.</li>
-            <li>Location pages map only when a strong destination match exists; otherwise they go to HUMAN CHECK.</li>
-            <li>News, article, press release, and historical update pages are conservatively flagged for HUMAN CHECK unless a strong specific Newsroom match exists.</li>
+            <li>Provider pages are mapped to the IA provider URL unless manually mapped 1:1.</li>
+            <li>Hospital-level pages map to the hospital-specific <code>/en/about/[hospital]</code> URLs from the IA workbook.</li>
+            <li>Service, patient/visitor, medical professional, education, notices, and giving destinations use IA workbook Full URL patterns.</li>
             <li>Assets are separated into JS/CSS, images, document assets, videos, and excluded non-HTML.</li>
           </ul>
         </details>
@@ -127,13 +127,14 @@ Files stay local until the workbook is downloaded.</pre>
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=20260603-3"></script>
-  <script src="progress-ui.js?v=20260603-3"></script>
-  <script src="reference-data.js?v=20260603-3"></script>
-  <script src="rules-override.js?v=20260603-3"></script>
-  <script src="rules-patch.js?v=20260603-3"></script>
-  <script src="rules-deep-research.js?v=20260603-3"></script>
-  <script src="rules-final-tuning.js?v=20260603-3"></script>
-  <script src="output-format.js?v=20260603-3"></script>
+  <script src="app.js?v=20260603-4"></script>
+  <script src="progress-ui.js?v=20260603-4"></script>
+  <script src="reference-data.js?v=20260603-4"></script>
+  <script src="rules-override.js?v=20260603-4"></script>
+  <script src="rules-patch.js?v=20260603-4"></script>
+  <script src="rules-deep-research.js?v=20260603-4"></script>
+  <script src="rules-final-tuning.js?v=20260603-4"></script>
+  <script src="rules-ia-source-truth.js?v=20260603-4"></script>
+  <script src="output-format.js?v=20260603-4"></script>
 </body>
 </html>
