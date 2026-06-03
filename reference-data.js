@@ -78,10 +78,14 @@ function buildDefaultReferenceRows(sourceLabel = "Bundled MGB Reference") {
 }
 
 async function loadBundledReferenceRows(sourceLabel = "Bundled MGB Reference") {
+  updateProgress(18, "Loading bundled MGB reference…", "Reading data/mgb-reference.csv.");
+  await nextUiFrame();
   const response = await fetch("data/mgb-reference.csv", { cache: "no-store" });
   if (!response.ok) throw new Error(`Bundled reference CSV returned ${response.status}`);
 
   const csvText = await response.text();
+  updateProgress(24, "Parsing bundled MGB reference…", "Preparing destination candidates.");
+  await nextUiFrame();
   const parsed = Papa.parse(csvText, {
     header: true,
     skipEmptyLines: "greedy",
@@ -99,6 +103,8 @@ async function loadBundledReferenceRows(sourceLabel = "Bundled MGB Reference") {
 
 async function getReferenceRows(overrideFile, overrideLabel, bundledLabel) {
   if (overrideFile) {
+    updateProgress(18, `Reading ${overrideLabel}…`, overrideFile.name);
+    await nextUiFrame();
     log(`Reading ${overrideLabel}: ${overrideFile.name}`);
     return await readAnyTable(overrideFile);
   }
@@ -117,6 +123,8 @@ async function getReferenceRows(overrideFile, overrideLabel, bundledLabel) {
 
 async function generateWorkbook() {
   resetLog();
+  startProgress("Preparing upload files…", "Please keep this tab open while the workbook is generated.");
+  await nextUiFrame();
   setButtons(false);
   summaryEl.innerHTML = "";
   previewEl.innerHTML = "";
@@ -128,12 +136,18 @@ async function generateWorkbook() {
 
   if (!sourceFile || !manualFile) {
     log("Missing required uploads. Source crawl and manual exclude/key are required.");
+    failProgress("Missing required files", "Upload the source crawl and manual exclude/key file.");
     return;
   }
 
   try {
+    updateProgress(8, "Reading source crawl…", sourceFile.name);
+    await nextUiFrame();
     log(`Reading source crawl: ${sourceFile.name}`);
     const sourceRows = await readAnyTable(sourceFile);
+
+    updateProgress(14, "Reading manual exclude/key…", manualFile.name);
+    await nextUiFrame();
     log(`Reading manual exclude/key: ${manualFile.name}`);
     const manualRows = await readAnyTable(manualFile);
 
@@ -143,6 +157,8 @@ async function generateWorkbook() {
       "Bundled MGB Destination Reference"
     );
 
+    updateProgress(32, "Loading IA reference…", iaFile ? iaFile.name : "Using bundled reference.");
+    await nextUiFrame();
     const iaRows = await getReferenceRows(
       iaFile,
       "MGB IA doc override",
@@ -154,16 +170,25 @@ async function generateWorkbook() {
     log(`Loaded ${destinationRows.length.toLocaleString()} MGB destination reference rows.`);
     if (iaRows.length) log(`Loaded ${iaRows.length.toLocaleString()} IA reference rows.`);
 
+    updateProgress(42, "Classifying and matching URLs…", "This is the heaviest step for larger crawls.");
+    await nextUiFrame();
     const result = processRows({ sourceRows, manualRows, destinationRows, iaRows });
     state.lastResult = result;
     log("Workbook tabs assembled.");
     log(`Manual exclude overlap removed from CSV: ${result.qa.manualOverlapInCsv}.`);
     log(`Redirect rows: ${result.redirectRows.length.toLocaleString()}. HUMAN CHECK rows: ${result.humanRows.length.toLocaleString()}.`);
 
+    updateProgress(74, "Building workbook…", "Creating tabs and formatting columns.");
+    await nextUiFrame();
     const workbook = buildXlsxWorkbook(result);
+
+    updateProgress(86, "Writing XLSX file…", "Preparing the downloadable workbook.");
+    await nextUiFrame();
     const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     state.workbookBlob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 
+    updateProgress(94, "Preparing CSV export…", "Finalizing downloads.");
+    await nextUiFrame();
     const csvText = toCsv(result.redirectRows);
     state.csvBlob = new Blob([csvText], { type: "text/csv;charset=utf-8" });
 
@@ -171,9 +196,11 @@ async function generateWorkbook() {
     renderPreview(result);
     setButtons(true);
     log("Ready. Download the workbook or CSV-only export.");
+    finishProgress("Workbook ready", "Downloads are available below.");
   } catch (error) {
     console.error(error);
     log(`Run failed: ${error.message}`);
     setButtons(false);
+    failProgress("Run failed", "Review the processing summary for the error.");
   }
 }
