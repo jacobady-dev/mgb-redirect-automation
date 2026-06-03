@@ -152,6 +152,13 @@ processRows = function formattedProcessRows(inputs) {
   result.qa.redirectRowsNon200Excluded = redirectRowsWithout200Status.length;
   result.qa.redirectRowsDeduped = redirectBeforeDedupe - result.redirectRows.length;
   result.qa.humanRowsDeduped = humanBeforeDedupe - result.humanRows.length;
+
+  result.logicRows = [
+    ...buildLogicRows(result.qa),
+    { "Item": "Redirect Rows Excluded from CSV because Source Status Was Not 200", "Value": result.qa.redirectRowsNon200Excluded },
+    { "Item": "Redirect Rows Removed by Normalized Dedupe", "Value": result.qa.redirectRowsDeduped },
+    { "Item": "HUMAN CHECK Rows Removed by Normalized Dedupe", "Value": result.qa.humanRowsDeduped },
+  ];
   return result;
 };
 
