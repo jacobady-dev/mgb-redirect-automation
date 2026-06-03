@@ -89,6 +89,14 @@
 
       <aside class="panel status-panel">
         <h2>Processing summary</h2>
+        <div id="inlineProgress" class="inline-progress" hidden>
+          <div class="inline-progress-header">
+            <span id="progressLabel">Preparing files…</span>
+            <strong id="progressPercent">0%</strong>
+          </div>
+          <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+          <p id="progressDetail">This may take a minute for larger crawls.</p>
+        </div>
         <pre id="log" aria-live="polite">Awaiting uploads...
 MGB reference data is already loaded.
 Files stay local until the workbook is downloaded.</pre>
@@ -107,9 +115,20 @@ Files stay local until the workbook is downloaded.</pre>
     </section>
   </main>
 
+  <div id="progressOverlay" class="progress-overlay" hidden>
+    <div class="progress-card" role="status" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <div>
+        <h2>Generating workbook</h2>
+        <p>Large crawls can make the browser look busy. Please keep this tab open.</p>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>
+  <script src="progress-ui.js"></script>
   <script src="reference-data.js"></script>
   <script src="rules-override.js"></script>
 </body>
