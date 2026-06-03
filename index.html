@@ -77,9 +77,9 @@
           <summary>Mapping assumptions</summary>
           <ul>
             <li>Manual exclude URLs are copied to their own tab and removed from automated processing.</li>
-            <li>Provider detail pages are sent to HUMAN CHECK unless a confirmed provider destination is supplied later.</li>
-            <li>Location pages map only when a strong destination match exists.</li>
-            <li>News, article, press release, and historical update pages are conservatively flagged for HUMAN CHECK.</li>
+            <li>Provider pages are mapped to the centralized provider directory unless manually mapped 1:1.</li>
+            <li>Location pages map only when a strong destination match or NWH location fallback exists.</li>
+            <li>News, article, press release, and historical update pages are conservatively flagged for HUMAN CHECK unless a strong specific Newsroom match exists.</li>
             <li>Assets are separated into JS/CSS, images, document assets, videos, and excluded non-HTML.</li>
           </ul>
         </details>
@@ -111,5 +111,6 @@ Files stay local until the workbook is downloaded.</pre>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>
   <script src="reference-data.js"></script>
+  <script src="rules-override.js"></script>
 </body>
 </html>
