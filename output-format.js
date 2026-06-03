@@ -28,20 +28,28 @@ function normalizedSourceKey(url) {
   }
 }
 
+function isSourceStatus200(statusCode) {
+  const status = String(statusCode || "").trim().toLowerCase();
+  if (!status) return false;
+  return status === "200" || status.startsWith("200 ") || status.includes(" 200 ") || status === "ok";
+}
+
 function outputDestinationSpecificity(row) {
   const destination = String(row["Destination URL"] || "").toLowerCase().replace(/\/+$/, "");
   const approval = String(row["DW - Approval"] || "").toUpperCase();
   let score = 0;
   if (approval.includes("HUMAN")) score += 100;
-  if (destination.includes("doctors.massgeneralbrigham.org")) score += 12;
-  if (destination.includes("/locations/mass-general-brigham-imaging-")) score += 12;
-  if (destination.includes("/newton-wellesley-childbirth-education")) score += 12;
-  if (destination.includes("/billing/cms-required-hospital-charge-data")) score += 12;
+  if (destination.includes("/en/providers")) score += 12;
+  if (destination.includes("/services/imaging")) score += 12;
+  if (destination.includes("/services/lactation-support")) score += 12;
+  if (destination.includes("/billing-insurance/billing/cms-required-hospital-charge-data")) score += 12;
   if (destination.includes("/notices/hipaa") || destination.includes("/notices/web-privacy-policy")) score += 12;
-  if (destination.includes("/patient-rights")) score += 12;
-  if (destination.includes("/education-and-training") || destination.includes("/medical-professionals")) score += 10;
-  if (destination.includes("/cancer/lung-cancer-screening") || destination.includes("/cancer/colorectal-cancer-screening")) score += 12;
-  if (destination.includes("/about/giving")) score += 10;
+  if (destination.includes("/rights-responsibilities") || destination.includes("/patient-rights")) score += 12;
+  if (destination.includes("/education") || destination.includes("/medical-professionals")) score += 10;
+  if (destination.includes("/services/lung-cancer") || destination.includes("/services/colorectal-cancer")) score += 12;
+  if (destination.includes("/about/giving") || destination.includes("/about/newton-wellesley-hospital/giving")) score += 10;
+  if (destination.endsWith("/services")) score -= 20;
+  if (destination.endsWith("/patients-visitors")) score -= 15;
   if (destination.endsWith("/patient-care/services-and-specialties")) score -= 20;
   if (destination.endsWith("/patient-care/patient-visitor-information")) score -= 15;
   if (destination.endsWith("/planning-your-visit/visitor-policy")) score -= 8;
@@ -80,7 +88,36 @@ processRows = function formattedProcessRows(inputs) {
     manualRows: normalizeManualRows(inputs.manualRows || []),
   });
 
-  result.redirectRows = (result.redirectRows || []).map((row) => ({
+  const rawRedirectRows = result.redirectRows || [];
+  const redirectRowsWith200Status = [];
+  const redirectRowsWithout200Status = [];
+
+  rawRedirectRows.forEach((row) => {
+    if (isSourceStatus200(row["Status Code"])) {
+      redirectRowsWith200Status.push(row);
+    } else {
+      redirectRowsWithout200Status.push(row);
+    }
+  });
+
+  if (redirectRowsWithout200Status.length) {
+    result.humanRows = [
+      ...(result.humanRows || []),
+      ...redirectRowsWithout200Status.map((row) => ({
+        "Source URL": row["Source URL"] || row["Existing URL"] || "",
+        "Suggested Destination": row["Destination URL"] || "",
+        "Review Reason": "Non-200 source status excluded from Redirect List",
+        "Confidence": row["Confidence"] || "",
+        "Status Code": row["Status Code"] || "",
+        "Content Type": row["Content Type"] || "",
+        "Title": row["Title"] || "",
+        "H1": row["H1"] || "",
+        "Notes": `Redirect List for CSV is limited to source URLs with 200 status in the Full Site Crawl. Original rule: ${row["Rule"] || ""}. ${row["Notes"] || ""}`.trim(),
+      })),
+    ];
+  }
+
+  result.redirectRows = redirectRowsWith200Status.map((row) => ({
     "Existing URL": row["Existing URL"] || row["Source URL"] || "",
     "Destination URL": row["Destination URL"] || "",
     "DW - Approval": row["DW - Approval"] || "",
@@ -112,6 +149,7 @@ processRows = function formattedProcessRows(inputs) {
   result.qa.redirectRows = result.redirectRows.length;
   result.qa.manualRows = result.manualExcludeRows.length;
   result.qa.humanRows = result.humanRows.length;
+  result.qa.redirectRowsNon200Excluded = redirectRowsWithout200Status.length;
   result.qa.redirectRowsDeduped = redirectBeforeDedupe - result.redirectRows.length;
   result.qa.humanRowsDeduped = humanBeforeDedupe - result.humanRows.length;
   return result;
